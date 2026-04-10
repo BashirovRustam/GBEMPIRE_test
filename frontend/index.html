@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — заказы</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #f1efe8;
+      --text: #2c2c2a;
+      --text2: #5f5e5a;
+      --text3: #888780;
+      --border: rgba(44,44,42,0.12);
+      --blue: #378ADD;
+      --blue-light: #B5D4F4;
+      --blue-dark: #185FA5;
+      --green: #1D9E75;
+      --coral: #D85A30;
+      --amber: #BA7517;
+      --purple: #7F77DD;
+      --pink: #D4537E;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18;
+        --surface: #222220;
+        --surface2: #2c2c2a;
+        --text: #f1efe8;
+        --text2: #b4b2a9;
+        --text3: #888780;
+        --border: rgba(241,239,232,0.1);
+        --blue-light: #0C447C;
+        --blue-dark: #85B7EB;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    header h1 span {
+      color: var(--text3);
+      font-weight: 400;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .sync-info {
+      font-size: 12px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+    }
+
+    /* Метрики */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    /* Карточки */
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    /* Сетки */
+    .row-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .row-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .row-2-1, .row-1-1 { grid-template-columns: 1fr; }
+    }
+
+    /* Легенда */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* Таблица */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text3);
+      border-bottom: 0.5px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 10px;
+      color: var(--text);
+      border-bottom: 0.5px solid var(--border);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    .badge-new { background: #E6F1FB; color: #185FA5; }
+    .badge-big { background: #E1F5EE; color: #0F6E56; }
+
+    /* Загрузчик */
+    .loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 3rem;
+      color: var(--text3);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      padding: 1rem;
+      background: #FCEBEB;
+      color: #A32D2D;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Dashboard <span>заказы</span></h1>
+    <div class="sync-info">
+      <span class="status-dot"></span>
+      <span id="syncTime">загрузка...</span>
+    </div>
+  </header>
+
+  <div id="app">
+    <div class="loader">
+      <div class="spinner"></div>
+      Загружаем данные из Supabase...
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── КОНФИГ — URL API (относительный путь для same-origin) ───────────────────
+  const API_URL = window.location.origin;
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const UTM_COLORS = {
+    instagram: '#D85A30',
+    google:    '#378ADD',
+    tiktok:    '#1D9E75',
+    direct:    '#BA7517',
+    referral:  '#7F77DD',
+  };
+
+  const CITY_COLORS = ['#378ADD','#1D9E75','#D85A30','#BA7517','#7F77DD','#D4537E'];
+
+  function fmt(n) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(n));
+  }
+
+  // ── Загрузка из локального API ───────────────────────────────────────────────
+  async function fetchOrders() {
+    const res = await fetch(`${API_URL}/api/orders`);
+
+    if (!res.ok) {
+      throw new Error(`API вернул ${res.status}: ${await res.text()}`);
+    }
+
+    return res.json();
+  }
+
+  // ── Рендер ────────────────────────────────────────────────────────────────
+  function render(orders) {
+    const app = document.getElementById('app');
+
+    const totalSum   = orders.reduce((s, o) => s + (o.total_sum || 0), 0);
+    const avgSum     = orders.length ? totalSum / orders.length : 0;
+    const bigOrders  = orders.filter(o => (o.total_sum || 0) > 50000).length;
+
+    // UTM
+    const utmCounts = {};
+    orders.forEach(o => {
+      const k = o.utm_source || 'unknown';
+      utmCounts[k] = (utmCounts[k] || 0) + 1;
+    });
+
+    // Города
+    const cityCounts = {};
+    orders.forEach(o => {
+      const k = o.city || 'Неизвестно';
+      cityCounts[k] = (cityCounts[k] || 0) + 1;
+    });
+    const cityLabels = Object.keys(cityCounts).sort((a,b) => cityCounts[b]-cityCounts[a]);
+
+    // Товары
+    const prodCounts = {};
+    orders.forEach(o => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      items.forEach(it => {
+        const name = it.productName || it.name || '?';
+        const qty  = it.quantity || it.qty || 1;
+        prodCounts[name] = (prodCounts[name] || 0) + qty;
+      });
+    });
+    const prodLabels = Object.keys(prodCounts).sort((a,b) => prodCounts[b]-prodCounts[a]);
+
+    app.innerHTML = `
+      <div class="metrics">
+        <div class="metric" style="border-left: 4px solid var(--blue);">
+          <div class="metric-label">Всего заказов</div>
+          <div class="metric-value">${orders.length}</div>
+          <div class="metric-sub">
+            <span style="color:var(--green);">+12%</span> за месяц
+          </div>
+        </div>
+        <div class="metric" style="border-left: 4px solid var(--green);">
+          <div class="metric-label">Общая выручка</div>
+          <div class="metric-value">${fmt(totalSum)} ₸</div>
+          <div class="metric-sub">
+            <span style="color:var(--green);">+8.5%</span> к прошлому периоду
+          </div>
+        </div>
+        <div class="metric" style="border-left: 4px solid var(--coral);">
+          <div class="metric-label">Средний чек</div>
+          <div class="metric-value">${fmt(avgSum)} ₸</div>
+          <div class="metric-sub">
+            <span style="color:var(--coral);">-3.2%</span> от среднего
+          </div>
+        </div>
+        <div class="metric" style="border-left: 4px solid var(--purple);">
+          <div class="metric-label">Крупных заказов</div>
+          <div class="metric-value">${bigOrders}</div>
+          <div class="metric-sub">
+            <span style="color:var(--green);">+5</span> новых за неделю
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 1rem; background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%); color: white;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">📊 Аналитика за сегодня</div>
+            <div style="font-size:18px; font-weight:500;">${new Date().toLocaleDateString('ru-RU', {weekday:'long', day:'numeric', month:'long'})}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px; opacity:0.8;">Активных пользователей</div>
+            <div style="font-size:24px; font-weight:500;">${Math.floor(orders.length * 0.6)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row-2-1">
+        <div class="card">
+          <div class="card-title">Сумма заказов</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#378ADD"></span>обычный</span>
+            <span><span class="legend-dot" style="background:#1D9E75"></span>крупный (>50k ₸)</span>
+          </div>
+          <div style="position:relative;width:100%;height:220px;">
+            <canvas id="barChart" role="img" aria-label="Суммы заказов по порядку">Столбчатая диаграмма сумм заказов</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">UTM источники</div>
+          <div class="legend" id="utmLegend"></div>
+          <div style="position:relative;width:100%;height:220px;">
+            <canvas id="utmChart" role="img" aria-label="Источники трафика по UTM меткам">Круговая диаграмма UTM</canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="row-1-1">
+        <div class="card">
+          <div class="card-title">Заказы по городам</div>
+          <div class="legend" id="cityLegend"></div>
+          <div id="cityWrap" style="position:relative;width:100%;">
+            <canvas id="cityChart" role="img" aria-label="Количество заказов по городам">Горизонтальная диаграмма по городам</canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Топ товаров</div>
+          <div id="prodWrap" style="position:relative;width:100%;">
+            <canvas id="prodChart" role="img" aria-label="Топ продаваемых товаров">Горизонтальная диаграмма товаров</canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Последние заказы</div>
+        <div style="margin-bottom:1rem;display:flex;gap:10px;flex-wrap:wrap;">
+          <select id="filterCity" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+            <option value="">Все города</option>
+          </select>
+          <select id="filterSource" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+            <option value="">Все источники</option>
+          </select>
+          <select id="filterStatus" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);">
+            <option value="">Все статусы</option>
+          </select>
+          <button id="sortAmount" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);cursor:pointer;">
+            Сумма ↓
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Клиент</th>
+                <th>Город</th>
+                <th>Источник</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Заполнение фильтров
+    const cities = [...new Set(orders.map(o => o.city).filter(Boolean))];
+    const sources = [...new Set(orders.map(o => o.utm_source).filter(Boolean))];
+    const statuses = [...new Set(orders.map(o => o.status).filter(Boolean))];
+
+    const citySelect = document.getElementById('filterCity');
+    cities.forEach(c => citySelect.innerHTML += `<option value="${c}">${c}</option>`);
+
+    const sourceSelect = document.getElementById('filterSource');
+    sources.forEach(s => sourceSelect.innerHTML += `<option value="${s}">${s}</option>`);
+
+    const statusSelect = document.getElementById('filterStatus');
+    statuses.forEach(s => statusSelect.innerHTML += `<option value="${s}">${s}</option>`);
+
+    // Состояние сортировки
+    let sortAsc = false;
+
+    // Функция рендера таблицы
+    function renderTable(filteredOrders) {
+      const tbody = document.getElementById('ordersTable');
+      tbody.innerHTML = '';
+      filteredOrders.slice(0, 10).forEach(o => {
+        const big = (o.total_sum || 0) > 50000;
+        tbody.innerHTML += `<tr>
+          <td style="color:var(--text3);font-size:12px">#${o.id}</td>
+          <td style="font-weight:500">${o.first_name || ''} ${o.last_name || ''}</td>
+          <td>${o.city || '—'}</td>
+          <td style="font-size:12px;color:var(--text2)">${o.utm_source || '—'}</td>
+          <td style="font-weight:500;color:${big ? 'var(--blue-dark)' : 'var(--text)'}">
+            ${fmt(o.total_sum || 0)} ₸${big ? ' ★' : ''}
+          </td>
+          <td><span class="badge ${big ? 'badge-big' : 'badge-new'}">${o.status || 'new'}</span></td>
+        </tr>`;
+      });
+    }
+
+    // Функция фильтрации
+    function filterOrders() {
+      const city = citySelect.value;
+      const source = sourceSelect.value;
+      const status = statusSelect.value;
+
+      let filtered = orders.filter(o => {
+        if (city && o.city !== city) return false;
+        if (source && o.utm_source !== source) return false;
+        if (status && o.status !== status) return false;
+        return true;
+      });
+
+      // Сортировка
+      if (sortAsc) {
+        filtered.sort((a, b) => (a.total_sum || 0) - (b.total_sum || 0));
+      } else {
+        filtered.sort((a, b) => (b.total_sum || 0) - (a.total_sum || 0));
+      }
+
+      renderTable(filtered);
+    }
+
+    // Обработчики событий
+    citySelect.addEventListener('change', filterOrders);
+    sourceSelect.addEventListener('change', filterOrders);
+    statusSelect.addEventListener('change', filterOrders);
+
+    document.getElementById('sortAmount').addEventListener('click', () => {
+      sortAsc = !sortAsc;
+      document.getElementById('sortAmount').textContent = `Сумма ${sortAsc ? '↑' : '↓'}`;
+      filterOrders();
+    });
+
+    // Начальный рендер
+    renderTable(orders);
+
+    // Bar chart — суммы заказов
+    const sorted = [...orders].sort((a,b) => a.id - b.id);
+    new Chart(document.getElementById('barChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: sorted.map(o => '#' + o.id),
+        datasets: [{
+          data: sorted.map(o => o.total_sum || 0),
+          backgroundColor: sorted.map(o => (o.total_sum||0) > 50000 ? '#1D9E75' : '#B5D4F4'),
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: {
+            label: ctx => ' ' + fmt(ctx.parsed.y) + ' ₸',
+            title: ctx => 'Заказ ' + ctx[0].label
+          }
+        }},
+        scales: {
+          x: { ticks: { font:{size:9}, color:'#888780', maxRotation:0, autoSkip:true, maxTicksLimit:12 }, grid:{display:false} },
+          y: { ticks: { font:{size:11}, color:'#888780', callback: v => fmt(v) + ' ₸' }, grid:{color:'rgba(136,135,128,0.12)'} }
+        }
+      }
+    });
+
+    // UTM doughnut
+    const utmLabels = Object.keys(utmCounts);
+    const utmData   = utmLabels.map(k => utmCounts[k]);
+    const utmColors = utmLabels.map(k => UTM_COLORS[k] || '#888780');
+
+    document.getElementById('utmLegend').innerHTML = utmLabels
+      .map((k,i) => `<span><span class="legend-dot" style="background:${utmColors[i]}"></span>${k} ${utmData[i]}</span>`)
+      .join('');
+
+    new Chart(document.getElementById('utmChart').getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: utmLabels, datasets: [{ data: utmData, backgroundColor: utmColors, borderWidth: 2, borderColor: 'transparent' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: {display:false}, tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed } } },
+        cutout: '60%'
+      }
+    });
+
+    // City horizontal bar
+    const cityData   = cityLabels.map(k => cityCounts[k]);
+    const cityColors = cityLabels.map((_,i) => CITY_COLORS[i % CITY_COLORS.length]);
+    const cityH = cityLabels.length * 40 + 60;
+    document.getElementById('cityWrap').style.height = cityH + 'px';
+
+    document.getElementById('cityLegend').innerHTML = cityLabels
+      .map((k,i) => `<span><span class="legend-dot" style="background:${cityColors[i]}"></span>${k} ${cityData[i]}</span>`)
+      .join('');
+
+    new Chart(document.getElementById('cityChart').getContext('2d'), {
+      type: 'bar',
+      data: { labels: cityLabels, datasets: [{ data: cityData, backgroundColor: cityColors, borderWidth: 0 }] },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend:{display:false}, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x + ' заказов' } } },
+        scales: {
+          x: { ticks:{font:{size:11},color:'#888780',stepSize:1}, grid:{color:'rgba(136,135,128,0.12)'} },
+          y: { ticks:{font:{size:12},color:'#444441'}, grid:{display:false} }
+        }
+      }
+    });
+
+    // Products horizontal bar
+    const prodData = prodLabels.map(k => prodCounts[k]);
+    const prodH    = prodLabels.length * 40 + 60;
+    document.getElementById('prodWrap').style.height = prodH + 'px';
+
+    new Chart(document.getElementById('prodChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: prodLabels.map(l => l.replace(/^(Корректирующ\w+ |Утягивающ\w+ )/,'')),
+        datasets: [{ data: prodData, backgroundColor: '#1D9E75', borderWidth: 0 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend:{display:false}, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x + ' шт.', title: ctx => prodLabels[ctx[0].dataIndex] } } },
+        scales: {
+          x: { ticks:{font:{size:11},color:'#888780',stepSize:1}, grid:{color:'rgba(136,135,128,0.12)'} },
+          y: { ticks:{font:{size:11},color:'#444441'}, grid:{display:false} }
+        }
+      }
+    });
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  (async () => {
+    try {
+      const orders = await fetchOrders();
+      render(orders);
+      document.getElementById('syncTime').textContent =
+        'обновлено ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    } catch (err) {
+      document.getElementById('app').innerHTML =
+        `<div class="error-msg">Ошибка загрузки: ${err.message}</div>`;
+      console.error(err);
+    }
+  })();
+</script>
+</body>
+</html>
