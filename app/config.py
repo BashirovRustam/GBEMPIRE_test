@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     """Настройки приложения через переменные окружения"""
     
     # RetailCRM
-    retailcrm_api_url: str = Field(..., env="RETAILCRM_API_URL")
-    retailcrm_api_key: str = Field(..., env="RETAILCRM_API_KEY")
+    retailcrm_api_url: str = Field(default="", env="RETAILCRM_API_URL")
+    retailcrm_api_key: str = Field(default="", env="RETAILCRM_API_KEY")
     
     # Supabase
     supabase_url: str = Field(default="", env="SUPABASE_URL")
