@@ -252,7 +252,9 @@
 
 <script>
   // ── КОНФИГ — URL API (относительный путь для same-origin) ───────────────────
-  const API_URL = window.location.origin;
+  // ── Supabase — прямое подключение ─────────────────────────────────────────
+  const SUPABASE_URL     = 'https://ythddwjrbdmalqfqcklj.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_k06tDX0-XPV405eiLWSm1A_xrSqNeeZ';
   // ──────────────────────────────────────────────────────────────────────────
 
   const UTM_COLORS = {
@@ -269,12 +271,20 @@
     return new Intl.NumberFormat('ru-RU').format(Math.round(n));
   }
 
-  // ── Загрузка из локального API ───────────────────────────────────────────────
+  // ── Загрузка напрямую из Supabase ────────────────────────────────────────
   async function fetchOrders() {
-    const res = await fetch(`${API_URL}/api/orders`);
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/Orders?select=*&order=created_at.desc`,
+      {
+        headers: {
+          'apikey':        SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      }
+    );
 
     if (!res.ok) {
-      throw new Error(`API вернул ${res.status}: ${await res.text()}`);
+      throw new Error(`Supabase вернул ${res.status}: ${await res.text()}`);
     }
 
     return res.json();
