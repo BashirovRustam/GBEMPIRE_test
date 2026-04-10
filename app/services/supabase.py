@@ -6,11 +6,18 @@ from app.config import settings
 
 class SupabaseService:
     """Клиент для работы с Supabase"""
-    
+
     def __init__(self):
+        if not settings.supabase_url:
+            raise ValueError("SUPABASE_URL not configured in environment variables")
+
+        key = settings.supabase_service_role_key or settings.supabase_anon_key
+        if not key:
+            raise ValueError("SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY not configured in environment variables")
+
         self.client: Client = create_client(
             settings.supabase_url,
-            settings.supabase_service_role_key or settings.supabase_anon_key
+            key
         )
     
     def save_order(self, order_data: Dict[str, Any]) -> Dict[str, Any]:
