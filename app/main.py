@@ -38,6 +38,16 @@ async def api_info():
 async def health_check():
     return {"status": "healthy"}
 
+import os
+
+@app.get("/api/debug")
+def debug():
+    return {
+        "supabase_url": os.environ.get("SUPABASE_URL", "NOT SET"),
+        "key_length": len(os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")),
+        "anon_length": len(os.environ.get("SUPABASE_ANON_KEY", "")),
+    }
+
 # Статические файлы (frontend) - монтируем в конце
 frontend_path = Path(__file__).parent.parent / "frontend"
 if frontend_path.exists():
