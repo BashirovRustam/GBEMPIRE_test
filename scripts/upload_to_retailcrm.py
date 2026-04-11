@@ -27,6 +27,9 @@ REQUEST_DELAY_SEC = 0.3
 # Slug сайта в RetailCRM (Settings → Sites)
 RETAILCRM_SITE = "Demo_CRM"
 
+# Webhook URL для Telegram-уведомлений
+WEBHOOK_URL = "http://localhost:8000/webhook/retailcrm"
+
 
 # ─── Хелперы ──────────────────────────────────────────────────────────────────
 
@@ -130,6 +133,27 @@ def upload_orders() -> None:
                         f" | {total:,.0f} ₸ | CRM id={crm_id}"
                     )
                     success_count += 1
+
+                    # Вызываем webhook для Telegram-уведомления если сумма > 50,000
+                    if total > 50000:
+                        try:
+                            print(f"[TELEGRAM] Отправка уведомления для заказа #{crm_id} (сумма: {total} ₸)")
+                            webhook_response = client.post(
+                                WEBHOOK_URL,
+                                json={"order": order},
+                                timeout=10.0
+                            )
+                            print(f"[TELEGRAM] Статус ответа: HTTP {webhook_response.status_code}")
+                            if webhook_response.status_code == 200:
+                                print(f"[TELEGRAM] Уведомление отправлено для заказа #{crm_id}")
+                                print(f"[TELEGRAM] Ответ: {webhook_response.text}")
+                            else:
+                                print(f"[TELEGRAM] Ошибка отправки: HTTP {webhook_response.status_code}")
+                                print(f"[TELEGRAM] Ответ: {webhook_response.text}")
+                        except Exception as e:
+                            print(f"[TELEGRAM] Ошибка: {e}")
+                    else:
+                        print(f"[INFO] Сумма заказа {total} ₸ - уведомление не требуется (threshold: 50,000 ₸)")
                 else:
                     error_msg = result.get("errorMsg") or result.get("errors") or result
                     print(
