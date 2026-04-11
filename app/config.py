@@ -22,11 +22,12 @@ class Settings(BaseSettings):
     fastapi_env: str = Field(default="development", env="FASTAPI_ENV")
     fastapi_port: int = Field(default=8000, env="FASTAPI_PORT")
     cors_origins: str = Field(default="http://localhost:8000,http://localhost:3000", env="CORS_ORIGINS")
-    
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()
